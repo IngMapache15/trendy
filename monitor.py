@@ -162,14 +162,18 @@ def revisar_intelligent_search():
 
 
 def revisar_home():
-    """Busca 'adviento' en la página principal (banner o enlace de lanzamiento)."""
+    """Busca en la página principal un ENLACE A PRODUCTO (/p) del calendario.
+    Solo la palabra 'adviento' no basta: la home ya la trae en su código."""
     try:
         r = _get(BASE + "/")
         if r.ok:
             html = r.text.lower()
-            # El footer ya trae 'terminos-calendario-2026', así que buscamos 'adviento'
-            enlaces = re.findall(r'href="([^"]*adviento[^"]*)"', html)
-            return ("adviento" in html), enlaces
+            enlaces = sorted(set(
+                e for e in re.findall(r'href="([^"]+)"', html)
+                if re.search(r"(adviento|calendario)[^\"?#]*/p(\?|$)", e)
+                and not EXCLUIR_NOMBRE.search(e)
+            ))
+            return bool(enlaces), enlaces
         log(f"home -> HTTP {r.status_code}")
     except Exception as e:
         log(f"home error: {e}")
@@ -208,7 +212,8 @@ def main():
         resumen = ", ".join(
             f"{h['nombre']} [{'DISPONIBLE' if h['disponible'] else 'no disp.'}]"
             for h in hallados.values()) or "sin productos de calendario"
-        log(f"ciclo {ciclo}: {resumen} | home 'adviento': {hay_adviento_home}")
+        log(f"ciclo {ciclo}: {resumen} | enlaces calendario en home: "
+            f"{enlaces_home or 'ninguno'}")
 
         for link, h in hallados.items():
             precio = f" — ${h['precio']:,.0f}".replace(",", ".") if h["precio"] else ""
@@ -232,8 +237,8 @@ def main():
             destino = enlaces_home[0] if enlaces_home else BASE
             if destino.startswith("/"):
                 destino = BASE + destino
-            notificar("👀 'Adviento' apareció en la página de Trendy",
-                      "La home ya menciona el calendario de adviento. Revisa ahora.",
+            notificar("👀 Apareció el enlace del calendario en la página",
+                      "La página principal ya enlaza al producto del calendario. Revisa ahora.",
                       destino, urgente=True)
             home_avisada = True
 
