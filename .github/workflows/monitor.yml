@@ -29,7 +29,7 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          INTERVALO_SEG: "45"
+          INTERVALO_SEG: "30"
           DURACION_MIN: "90"
           MODO_PRUEBA: ${{ github.event_name == 'workflow_dispatch' && inputs.prueba && '1' || '0' }}
         run: python monitor.py
