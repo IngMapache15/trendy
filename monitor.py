@@ -195,11 +195,26 @@ def main():
     visto_producto = set()      # productos ya avisados como "apareció"
     avisos_venta = {}           # link -> nº de avisos de venta enviados
     ultimo_aviso_venta = {}     # link -> timestamp
-    home_avisada = False
+    estado = {"home_avisada": False}
     ciclo = 0
 
     while True:
         ciclo += 1
+        try:
+            ciclo_revision(ciclo, visto_producto, avisos_venta,
+                           ultimo_aviso_venta, estado)
+        except Exception as e:  # nunca dejar morir el monitor por un error raro
+            log(f"error en ciclo {ciclo}: {e!r}")
+
+        if MODO_PRUEBA or time.time() + INTERVALO > fin:
+            break
+        time.sleep(INTERVALO + random.uniform(-3, 3))
+
+    log("Fin de esta ejecución.")
+
+
+def ciclo_revision(ciclo, visto_producto, avisos_venta, ultimo_aviso_venta, estado):
+    if True:
         hallados = {h["link"]: h for h in revisar_catalogo()}
         for h in revisar_intelligent_search():
             # combinar: si cualquiera dice disponible, cuenta como disponible
@@ -233,20 +248,14 @@ def main():
                           f"pero ya está publicado. Atento.", link, urgente=True)
                 visto_producto.add(link)
 
-        if hay_adviento_home and not home_avisada:
+        if hay_adviento_home and not estado["home_avisada"]:
             destino = enlaces_home[0] if enlaces_home else BASE
             if destino.startswith("/"):
                 destino = BASE + destino
             notificar("👀 Apareció el enlace del calendario en la página",
                       "La página principal ya enlaza al producto del calendario. Revisa ahora.",
                       destino, urgente=True)
-            home_avisada = True
-
-        if MODO_PRUEBA or time.time() + INTERVALO > fin:
-            break
-        time.sleep(INTERVALO + random.uniform(-5, 5))
-
-    log("Fin de esta ejecución.")
+            estado["home_avisada"] = True
 
 
 if __name__ == "__main__":
