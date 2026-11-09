@@ -2,22 +2,28 @@ name: Monitor Calendario Trendy
 
 on:
   schedule:
-    - cron: "0 * 5-15 11 *"
+    # Respaldo: GitHub retrasa u omite estos cron, por eso no dependemos de ellos.
+    - cron: "*/30 * 5-15 11 *"
   workflow_dispatch:
     inputs:
       prueba:
         description: "Modo prueba (manda una notificación y revisa una vez)"
         type: boolean
-        default: true
+        default: false
 
+# Nunca corren dos a la vez; si ya hay una corriendo, la nueva espera en cola
 concurrency:
   group: monitor-trendy
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
 
 jobs:
   vigilar:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,11 +31,19 @@ jobs:
           python-version: "3.12"
       - run: pip install requests
       - name: Revisar tienda
+        continue-on-error: true
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           INTERVALO_SEG: "30"
-          DURACION_MIN: "90"
+          DURACION_MIN: "340"
           MODO_PRUEBA: ${{ github.event_name == 'workflow_dispatch' && inputs.prueba && '1' || '0' }}
         run: python monitor.py
+
+      # Al terminar, se relanza sola para que no queden huecos
+      - name: Relanzar monitor
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.prueba) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run monitor.yml --repo ${{ github.repository }} -f prueba=false
